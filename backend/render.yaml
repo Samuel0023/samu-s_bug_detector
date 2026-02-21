@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: samus-bug-detector-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8080
+    healthCheckPath: /health

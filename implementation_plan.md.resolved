@@ -1,0 +1,70 @@
+# Samu's Bug Detector - Plan de Acción y Arquitectura
+
+Este documento detalla el plan de implementación para "Samu's Bug Detector", un juego web interactivo de deducción social móvil-first con capacidades en tiempo real.
+
+## 1. Stack Tecnológico Propuesto
+
+*   **Frontend**: React.js (via Vite) + TypeScript.
+*   **Estilos**: CSS Modules o Tailwind CSS (basado en preferencias, pero usaremos Vanilla CSS/Modules por defecto para diseños premium como se solicita). Animaciones con Framer Motion o CSS puro para una experiencia fluida.
+*   **Backend & Real-time**: Go (Golang) con paquete `gorilla/websocket`. Manejará el estado de la sala, jugadores y fases del juego totalmente en memoria.
+*   **CMS (Gestión de Palabras)**: Google Sheets. Usaremos la API de Google Sheets (vía fetch a un endpoint público o Google Apps Script) para obtener las palabras de forma dinámica sin recompilar.
+*   **Host**:
+    *   **Frontend:** Vercel o Netlify.
+    *   **Backend:** Render (Web Service gratuito) o Fly.io.
+
+## 2. Modelado de Datos (En Memoria - Go)
+
+Dado que es una partida efímera de una tarde, mantendremos el estado en la memoria RAM del servidor Go.
+
+### Estructura `Room` (Sala)
+*   `ID` (String, ej: "ABCD")
+*   `Status` (Enum: 'lobby', 'playing', 'voting', 'finished')
+*   `Category` (String)
+*   `SecretWord` (String)
+*   `Players` (Mapa de WebSockets conectados o Estructura de Jugador)
+*   `HostID` (String)
+
+### Estructura `Player` (Jugador)
+*   `ID` (String/UUID)
+*   `Name` (String)
+*   `Role` (Enum: 'citizen', 'bug', 'host')
+*   `IsHost` (Boolean)
+*   `Connection` (*websocket.Conn)
+
+## 3. Integración con Google Sheets (CMS)
+
+1.  Crearemos una hoja de cálculo en Google Sheets con columnas: `Categoría` y `Palabra`.
+2.  Publicaremos la hoja a la web como CSV o usaremos la API pública para leerla en formato JSON desde el cliente de Next/React al momento de iniciar la partida.
+3.  El Host selecciona la categoría, y el juego elige una palabra aleatoria de esa categoría en la base de datos descargada.
+
+## 4. Fases del Juego (Máquina de Estados)
+
+1.  **Lobby**: Los jugadores ingresan un código de sala y su nombre vía WebSocket. El servidor actualiza a todos los clientes. El Host ve la lista de conectados.
+2.  **Selección**: El Host elige una categoría. El servidor asigna los roles al azar (1 Bug, resto Citizens) y selecciona la palabra secreta. El servidor envía mensajes distintos por WS a cada jugador con su rol.
+3.  **Ronda de Juego**: 
+    *   Citizens ven: La palabra secreta.
+    *   Bug ve: "¡Eres el Bug! Finge que sabes la palabra."
+    *   Todos dicen una palabra en voz alta en la vida real.
+4.  **Votación**: Se deshabilita la vista de palabra. En la UI aparece una lista para votar quién es el Bug mediante peticiones WS al servidor. El servidor envía el update de votos en vivo.
+5.  **Resolución**: 
+    *   Si atrapan al Bug: se revela.
+    *   Si los Citizens se equivocan: el Bug gana.
+6.  **Reinicio**: El host reinicia el estado de la `Room` en el servidor Go.
+
+## 5. Diseño UI / UX (Mobile First)
+
+*   **Tema Místico / Hacker**: Tonos oscuros (negro, morados oscuros, verde neón o azul eléctrico) para dar la vibra de "detector de bugs" o "hackers".
+*   **Tipografía**: Moderna y legible (ej. Inter o Roboto Mono para toques "tech").
+*   **Interacciones**: Botones grandes, retroalimentación táctil, animaciones suaves al revelar roles (tipo carta que se voltea).
+
+## 6. Fases de Implementación
+
+1.  **Fase 1: Setup del Proyecto** (Inicialización de Vite para frontend y `go mod init` para backend).
+2.  **Fase 2: Backend Golang** (Levantar servidor HTTP, configurar Gorilla WebSockets, estructura básica de Salas en memoria).
+3.  **Fase 3: Backend Lógica** (Eventos WS: Unirse a sala, empezar juego, enviar roles).
+4.  **Fase 4: Frontend UI Básica** (Pantallas de Inicio, Lobby, Juego estáticas y CSS premium).
+5.  **Fase 5: Frontend Conexión WebSocket** (Conectar al servidor Go y gestionar estados con context/hooks).
+6.  **Fase 6: Integración Google Sheets** (Script para leer palabras dinámicamente).
+7.  **Fase 7: Despliegue** (Render para Go, Vercel para React).
+
+

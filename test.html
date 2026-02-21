@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WS Samu's Bug Detector</title>
+    <style>
+        body { font-family: monospace; background: #1e1e1e; color: #00ff00; padding: 20px; }
+        .panel { border: 1px solid #333; padding: 10px; margin-bottom: 10px; }
+        input, button { background: #333; color: white; border: 1px solid #555; padding: 5px; margin: 3px; }
+        #logs { white-space: pre-wrap; height: 300px; overflow-y: scroll; border: 1px solid #555; padding: 10px; background: #000; }
+    </style>
+</head>
+<body>
+    <h2>Test Backend WebSockets</h2>
+    
+    <div class="panel">
+        <strong>Conexión</strong><br>
+        <button onclick="connect()">1. Conectar a WS</button>
+    </div>
+
+    <div class="panel">
+        <strong>Acciones Host</strong><br>
+        <button onclick="send({type: 'create_room', player: {id: 'host123', name: 'Samu'}})">2. Crear Sala</button>
+        <button onclick="send({type: 'start_game', category: 'Mundo Dev'})">5. Iniciar Juego</button>
+    </div>
+
+    <div class="panel">
+        <strong>Acciones Invitado</strong><br>
+        <input type="text" id="roomCode" placeholder="Código de Sala" />
+        <button onclick="joinRoom()">3. Unirse a Sala</button>
+    </div>
+
+    <div class="panel">
+        <strong>Votación</strong><br>
+        <input type="text" id="voteTarget" placeholder="ID a votar (ej. host123)" />
+        <button onclick="vote()">6. Emitir Voto</button>
+    </div>
+
+    <div class="panel">
+        <strong>Logs del Servidor</strong>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let ws;
+
+        function log(msg) {
+            const logs = document.getElementById('logs');
+            logs.innerHTML += msg + '\n';
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function connect() {
+            ws = new WebSocket('ws://localhost:8080/ws');
+            ws.onopen = () => log('[🟢] Conectado al servidor WebSocket');
+            ws.onclose = () => log('[🔴] Desconectado del servidor');
+            ws.onerror = (e) => log('[❌] Error: ' + e);
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                log('[⬇️ Recibido] ' + JSON.stringify(data, null, 2));
+            };
+        }
+
+        function send(payload) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('[❌] No estás conectado!');
+                return;
+            }
+            log('[⬆️ Enviando] ' + JSON.stringify(payload));
+            ws.send(JSON.stringify(payload));
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('roomCode').value;
+            send({type: 'join', roomCode: code, player: {id: 'guest456', name: 'Aldi'}});
+        }
+
+        function vote() {
+            const target = document.getElementById('voteTarget').value;
+            send({type: 'vote', targetId: target});
+        }
+    </script>
+</body>
+</html>
