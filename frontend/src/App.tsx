@@ -345,6 +345,19 @@ export default function App() {
             </ul>
           </div>
         )}
+
+        {isHost && (
+          <button
+            className="btn btn-secondary"
+            style={{ marginTop: 8, fontSize: '0.85rem' }}
+            onClick={() => {
+              setSelectedCategory('');
+              restartGame();
+            }}
+          >
+            ✖ Cerrar Juego
+          </button>
+        )}
       </div>
     );
   }
@@ -400,6 +413,19 @@ export default function App() {
           <div className="card text-center">
             <p className="text-muted">Esperando al Host para la siguiente ronda...</p>
           </div>
+        )}
+
+        {isHost && (
+          <button
+            className="btn btn-secondary"
+            style={{ marginTop: 4, fontSize: '0.85rem' }}
+            onClick={() => {
+              setSelectedCategory('');
+              restartGame();
+            }}
+          >
+            ✖ Cerrar Juego
+          </button>
         )}
       </div>
     );
