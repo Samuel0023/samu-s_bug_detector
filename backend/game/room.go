@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -107,10 +108,23 @@ func (h *Hub) RemovePlayer(roomCode, playerID string) {
 	room.mu.Unlock()
 
 	if isEmpty {
-		h.mu.Lock()
-		delete(h.Rooms, roomCode)
-		h.mu.Unlock()
-		log.Printf("Room %s deleted (empty)", roomCode)
+		// Grace period: wait 10 minutes before deleting the room
+		// so players can reconnect after locking their screens
+		log.Printf("Room %s is empty, will delete in 10 minutes if no one rejoins", roomCode)
+		go func() {
+			time.Sleep(10 * time.Minute)
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			if r, ok := h.Rooms[roomCode]; ok {
+				r.mu.RLock()
+				stillEmpty := len(r.Players) == 0
+				r.mu.RUnlock()
+				if stillEmpty {
+					delete(h.Rooms, roomCode)
+					log.Printf("Room %s deleted (empty after grace period)", roomCode)
+				}
+			}
+		}()
 	}
 }
 

@@ -5,8 +5,16 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	// Time allowed to read the next pong message from the peer.
+	pongWait = 40 * time.Second
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = 30 * time.Second
 )
 
 var upgrader = websocket.Upgrader{
@@ -46,8 +54,33 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	var currentRoom *Room
 	var currentPlayer *Player
 
+	// Setup ping/pong keepalive
+	conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
+	// Start ping ticker in background
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(pingPeriod)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
+					return
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
 	// Cleanup on disconnect
 	defer func() {
+		close(done)
 		if currentRoom != nil && currentPlayer != nil {
 			hub.RemovePlayer(currentRoom.Code, currentPlayer.ID)
 			// Broadcast update if room still exists
