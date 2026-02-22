@@ -158,6 +158,36 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 				},
 			})
 
+			// Si el juego ya empezó, mandarle la info personal para que se ponga al día
+			if currentRoom.Status == StatusPlaying {
+				currentRoom.mu.RLock()
+				// Send current round info to the player
+				currentRoom.SendToPlayer(currentPlayer.ID, ServerMessage{
+					Type: "next_round",
+					Payload: map[string]interface{}{
+						"round":     currentRoom.Round,
+						"maxRounds": currentRoom.MaxRounds,
+						"players":   currentRoom.GetActivePlayerList(),
+					},
+				})
+
+				// Send role and secret word
+				payload := map[string]interface{}{
+					"status": currentRoom.Status,
+					"role":   currentPlayer.Role,
+				}
+				if currentPlayer.Role == RoleBug {
+					payload["secretWord"] = "" // Bug no ve la palabra
+				} else {
+					payload["secretWord"] = currentRoom.SecretWord
+				}
+				currentRoom.SendToPlayer(currentPlayer.ID, ServerMessage{
+					Type:    "game_start",
+					Payload: payload,
+				})
+				currentRoom.mu.RUnlock()
+			}
+
 		case "start_game":
 			if currentRoom == nil || !currentPlayer.IsHost {
 				break

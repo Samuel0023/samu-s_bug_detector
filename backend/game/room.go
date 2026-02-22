@@ -81,11 +81,23 @@ func (h *Hub) JoinRoom(code string, player *Player) (*Room, error) {
 	room.mu.Lock()
 	defer room.mu.Unlock()
 
-	if room.Status != StatusLobby {
+	// Handle reconnection vs new join
+	_, isReconnecting := room.Players[player.ID]
+
+	// Only reject new joins if game is in progress
+	if !isReconnecting && room.Status != StatusLobby {
 		return nil, ErrGameInProgress
 	}
 
-	player.IsHost = false
+	// Preserve host status if reconnecting
+	if isReconnecting {
+		player.IsHost = room.Players[player.ID].IsHost
+		player.Role = room.Players[player.ID].Role
+		player.Vote = room.Players[player.ID].Vote
+	} else {
+		player.IsHost = false
+	}
+
 	room.Players[player.ID] = player
 
 	log.Printf("Player %s joined room %s", player.Name, code)
